@@ -8,3 +8,5 @@ lightgbm
 fastapi
 uvicorn
 pydantic
+seaborn
+matplotlib
