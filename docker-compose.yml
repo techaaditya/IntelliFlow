@@ -1,0 +1,28 @@
+version: '3.9'
+services:
+  api:
+    build: .
+    ports: ['8000:8000']
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - REDIS_URL=redis://redis:6379
+    depends_on: [mlflow, redis, chromadb]
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    ports: ['5000:5000']
+    command: mlflow server --host 0.0.0.0
+
+  streamlit:
+    build: ./ui
+    ports: ['8501:8501']
+    environment:
+      - API_URL=http://api:8000
+
+  redis:
+    image: redis:7-alpine
+
+  chromadb:
+    image: chromadb/chroma:latest
+    ports: ['8001:8001']
