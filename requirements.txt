@@ -8,5 +8,7 @@ lightgbm
 fastapi
 uvicorn
 pydantic
+python-multipart
+httpx2
 seaborn
 matplotlib
