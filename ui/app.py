@@ -23,34 +23,52 @@ st.set_page_config(page_title="IntelliFlow", page_icon="IF", layout="wide")
 CSS = """
 <style>
 :root {
-  --if-ink: #18212f;
-  --if-muted: #647084;
-  --if-border: #d8dde6;
+  --if-ink: #111827;
+  --if-muted: #667085;
+  --if-border: #d6deea;
   --if-panel: #ffffff;
-  --if-soft: #f6f8fb;
-  --if-teal: #0f766e;
-  --if-blue: #2457a7;
-  --if-amber: #b7791f;
+  --if-soft: #f7f9fd;
+  --if-midnight: #0b1020;
+  --if-navy: #111a31;
+  --if-teal: #00a991;
+  --if-blue: #3167ff;
+  --if-violet: #7c3aed;
+  --if-amber: #f59e0b;
   --if-red: #b42318;
+  --if-shadow: 0 18px 50px rgba(20, 28, 45, .12);
 }
 .stApp {
-  background: #ffffff;
+  background:
+    linear-gradient(180deg, #f7fbff 0%, #eef3f8 46%, #f9fbfd 100%);
   color: var(--if-ink);
 }
 .block-container {
-  padding-top: 1.25rem;
+  padding-top: 1rem;
+  padding-bottom: 3rem;
   max-width: 1500px;
 }
 [data-testid="stSidebar"] {
-  background: #f8fafc;
-  border-right: 1px solid var(--if-border);
+  background:
+    linear-gradient(180deg, #0b1020 0%, #111a31 58%, #172033 100%);
+  border-right: 1px solid rgba(255,255,255,.08);
 }
 [data-testid="stSidebar"] * {
-  color: var(--if-ink);
+  color: #e5edf7;
 }
 [data-testid="stSidebar"] [data-testid="stFileUploader"] section {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.18);
+}
+[data-testid="stSidebar"] [data-testid="stFileUploader"] button {
   background: #ffffff;
-  border-color: var(--if-border);
+  color: #111827;
+}
+[data-testid="stSidebar"] [data-baseweb="radio"] label {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 8px;
+  padding: .32rem .5rem;
+  margin-bottom: .25rem;
 }
 h1, h2, h3 {
   letter-spacing: 0;
@@ -62,35 +80,229 @@ p, label, span, div {
 .stMarkdown, .stText, [data-testid="stMarkdownContainer"] {
   color: var(--if-ink);
 }
-.if-title {
-  display: flex;
-  align-items: baseline;
-  gap: .75rem;
-  padding: .25rem 0 .75rem;
-  border-bottom: 1px solid var(--if-border);
+.if-shell {
+  background: rgba(255,255,255,.78);
+  border: 1px solid rgba(214,222,234,.85);
+  border-radius: 8px;
+  box-shadow: var(--if-shadow);
+  overflow: hidden;
+}
+.if-hero {
+  position: relative;
+  background:
+    linear-gradient(135deg, #0b1020 0%, #13213d 48%, #123b47 100%);
+  border-radius: 8px;
+  color: #ffffff;
+  padding: 1.35rem 1.5rem;
   margin-bottom: 1rem;
+  overflow: hidden;
 }
-.if-title h1 {
+.if-hero:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px);
+  background-size: 34px 34px;
+  opacity: .32;
+}
+.if-hero > * {
+  position: relative;
+  z-index: 1;
+}
+.if-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .95rem;
+}
+.if-brand {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.if-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00a991 0%, #3167ff 100%);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  letter-spacing: 0;
+  color: #ffffff;
+  box-shadow: 0 12px 32px rgba(0,169,145,.28);
+}
+.if-title-row h1 {
   margin: 0;
-  font-size: 1.75rem;
+  font-size: 2.05rem;
+  color: #ffffff;
 }
-.if-title span {
-  color: var(--if-muted);
+.if-title-row span, .if-hero p {
+  color: #c7d7ea;
   font-size: .95rem;
+}
+.if-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #e8f1ff;
+  padding: .42rem .72rem;
+  font-size: .82rem;
+  white-space: nowrap;
+}
+.if-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+}
+.if-hero-card {
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  padding: .85rem;
+  min-height: 92px;
+}
+.if-hero-card strong {
+  display: block;
+  color: #ffffff;
+  margin-bottom: .35rem;
+}
+.if-hero-card span {
+  color: #c7d7ea;
+  font-size: .84rem;
+}
+.if-sidebar-brand {
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.08);
+  border-radius: 8px;
+  padding: .85rem;
+  margin: .35rem 0 1rem;
+}
+.if-sidebar-brand strong {
+  display: block;
+  font-size: 1.08rem;
+  color: #ffffff;
+}
+.if-sidebar-brand span {
+  color: #b7c5d7;
+  font-size: .82rem;
 }
 .if-band {
   background: var(--if-soft);
   border: 1px solid var(--if-border);
   border-radius: 8px;
   color: var(--if-ink);
-  padding: .9rem 1rem;
-  margin: .5rem 0 1rem;
+  padding: 1rem;
+  margin: .65rem 0 1rem;
+  box-shadow: 0 10px 28px rgba(20, 28, 45, .06);
 }
-.metric-row [data-testid="stMetric"] {
-  background: var(--if-panel);
+.if-section-title {
+  margin: 1.35rem 0 .8rem;
+}
+.if-section-title span {
+  color: var(--if-blue);
+  font-size: .76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.if-section-title h2 {
+  margin: .15rem 0 .2rem;
+  font-size: 1.55rem;
+}
+.if-section-title p {
+  margin: 0;
+  color: var(--if-muted);
+}
+.if-stat-card {
+  position: relative;
+  background: #ffffff;
   border: 1px solid var(--if-border);
   border-radius: 8px;
-  padding: .7rem .85rem;
+  padding: 1rem;
+  min-height: 118px;
+  overflow: hidden;
+  box-shadow: 0 14px 35px rgba(20, 28, 45, .08);
+}
+.if-stat-card:before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--if-blue), var(--if-teal));
+}
+.if-stat-label {
+  color: var(--if-muted);
+  font-size: .78rem;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+.if-stat-value {
+  font-size: 2rem;
+  line-height: 1.15;
+  font-weight: 850;
+  color: var(--if-ink);
+  margin-top: .45rem;
+}
+.if-stat-note {
+  color: var(--if-muted);
+  font-size: .84rem;
+  margin-top: .38rem;
+}
+.if-engine-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .85rem;
+  margin: .9rem 0 1rem;
+}
+.if-engine-card {
+  border-radius: 8px;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid var(--if-border);
+  box-shadow: 0 14px 35px rgba(20, 28, 45, .08);
+}
+.if-engine-card strong {
+  color: var(--if-ink);
+  font-size: 1rem;
+}
+.if-engine-card p {
+  margin: .35rem 0 0;
+  color: var(--if-muted);
+  font-size: .88rem;
+}
+.if-empty {
+  background:
+    linear-gradient(135deg, #ffffff 0%, #f5f8ff 100%);
+  border: 1px solid var(--if-border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  box-shadow: var(--if-shadow);
+}
+.if-empty h2 {
+  margin: 0 0 .35rem;
+}
+.if-empty-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .8rem;
+  margin-top: 1rem;
+}
+.if-step {
+  border-radius: 8px;
+  border: 1px solid var(--if-border);
+  background: #ffffff;
+  padding: .85rem;
+}
+.if-step b {
+  color: var(--if-blue);
 }
 .if-status {
   display: inline-block;
@@ -106,11 +318,13 @@ p, label, span, div {
 .if-info { color: var(--if-blue); font-weight: 700; }
 .if-ok { color: var(--if-teal); font-weight: 700; }
 div[data-testid="stTabs"] button {
-  min-height: 2.6rem;
+  min-height: 2.8rem;
   color: var(--if-ink);
+  border-radius: 8px 8px 0 0;
 }
 div[data-testid="stTabs"] button[aria-selected="true"] {
   border-bottom-color: var(--if-teal);
+  color: var(--if-teal);
 }
 [data-testid="stAlert"] {
   border-radius: 8px;
@@ -119,12 +333,24 @@ div[data-testid="stTabs"] button[aria-selected="true"] {
   color: var(--if-ink);
 }
 [data-testid="stButton"] button[kind="primary"] {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: linear-gradient(90deg, #0f766e 0%, #3167ff 100%);
+  border: 0;
   color: #ffffff;
+  min-height: 3rem;
+  border-radius: 8px;
+  box-shadow: 0 16px 30px rgba(49,103,255,.18);
 }
 [data-testid="stButton"] button[kind="primary"] * {
   color: #ffffff;
+}
+@media (max-width: 900px) {
+  .if-hero-grid, .if-engine-strip, .if-empty-grid {
+    grid-template-columns: 1fr;
+  }
+  .if-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>
 """
@@ -132,21 +358,19 @@ div[data-testid="stTabs"] button[aria-selected="true"] {
 
 def main() -> None:
     st.markdown(CSS, unsafe_allow_html=True)
-    st.markdown(
-        "<div class='if-title'><h1>IntelliFlow</h1><span>Unified AutoML and Analytics workbench</span></div>",
-        unsafe_allow_html=True,
-    )
+    render_header()
 
     dataset = sidebar_dataset()
     if dataset is None:
-        st.info("Upload a dataset or load a sample from the sidebar to begin.")
+        empty_state()
         return
 
     st.session_state["dataset"] = dataset
     overview(dataset)
+    engine_strip()
 
     dataset_tab, analytics_tab, automl_tab, predict_tab, api_tab = st.tabs(
-        ["Dataset", "Analytics Engine", "AutoML Engine", "Prediction", "API"]
+        ["01 Dataset", "02 Analytics", "03 AutoML", "04 Prediction", "05 API"]
     )
     with dataset_tab:
         dataset_view(dataset)
@@ -162,6 +386,10 @@ def main() -> None:
 
 def sidebar_dataset() -> pd.DataFrame | None:
     with st.sidebar:
+        st.markdown(
+            "<div class='if-sidebar-brand'><strong>IntelliFlow</strong><span>Dataset in. Intelligence out.</span></div>",
+            unsafe_allow_html=True,
+        )
         st.subheader("Dataset")
         source = st.radio("Source", ["Upload file", "Iris sample", "Product analytics sample"], label_visibility="collapsed")
         if source == "Upload file":
@@ -178,21 +406,103 @@ def sidebar_dataset() -> pd.DataFrame | None:
         return product_analytics_sample()
 
 
+def render_header() -> None:
+    st.markdown(
+        """
+        <section class="if-hero">
+          <div class="if-title-row">
+            <div class="if-brand">
+              <div class="if-mark">IF</div>
+              <div>
+                <h1>IntelliFlow Command Center</h1>
+                <span>Unified AutoML, EDA, model registry, and prediction workspace</span>
+              </div>
+            </div>
+            <div class="if-pill">Engine 1 + Engine 2 integrated</div>
+          </div>
+          <div class="if-hero-grid">
+            <div class="if-hero-card"><strong>Analyze</strong><span>Profile data quality, correlations, anomalies, trends, and product behavior.</span></div>
+            <div class="if-hero-card"><strong>Train</strong><span>Run preprocessing, feature engineering, HPO, tracking, and registry in one flow.</span></div>
+            <div class="if-hero-card"><strong>Deploy</strong><span>Use the registered pipeline for consistent raw-row predictions.</span></div>
+          </div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def empty_state() -> None:
+    st.markdown(
+        """
+        <div class="if-empty">
+          <h2>Start with a dataset</h2>
+          <p>Upload your own file or choose a sample from the left panel. The same dataset powers Engine 2 analytics and Engine 1 AutoML, so you can inspect the data before training.</p>
+          <div class="if-empty-grid">
+            <div class="if-step"><b>01</b><br><strong>Load</strong><br><span>CSV, Excel, JSON, Parquet, or built-in samples.</span></div>
+            <div class="if-step"><b>02</b><br><strong>Understand</strong><br><span>Run EDA, quality scoring, insights, and visualizations.</span></div>
+            <div class="if-step"><b>03</b><br><strong>Model</strong><br><span>Train and register a complete AutoML prediction pipeline.</span></div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def stat_card(label: str, value: str, note: str) -> None:
+    st.markdown(
+        f"""
+        <div class="if-stat-card">
+          <div class="if-stat-label">{label}</div>
+          <div class="if-stat-value">{value}</div>
+          <div class="if-stat-note">{note}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def section_title(kicker: str, title: str, description: str) -> None:
+    st.markdown(
+        f"""
+        <div class="if-section-title">
+          <span>{kicker}</span>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def overview(dataset: pd.DataFrame) -> None:
     numeric = len(dataset.select_dtypes(include=np.number).columns)
     missing = int(dataset.isna().sum().sum())
     duplicate_rows = int(dataset.duplicated().sum())
-    st.markdown("<div class='metric-row'>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Rows", f"{len(dataset):,}")
-    c2.metric("Columns", f"{dataset.shape[1]:,}")
-    c3.metric("Numeric", f"{numeric:,}")
-    c4.metric("Missing cells", f"{missing:,}", delta=f"{duplicate_rows} duplicate rows")
-    st.markdown("</div>", unsafe_allow_html=True)
+    with c1:
+        stat_card("Rows", f"{len(dataset):,}", "Records available for analysis")
+    with c2:
+        stat_card("Columns", f"{dataset.shape[1]:,}", "Fields detected in the workspace")
+    with c3:
+        stat_card("Numeric", f"{numeric:,}", "Columns ready for scoring and charts")
+    with c4:
+        stat_card("Missing cells", f"{missing:,}", f"{duplicate_rows} duplicate rows")
+
+
+def engine_strip() -> None:
+    st.markdown(
+        """
+        <div class="if-engine-strip">
+          <div class="if-engine-card"><strong>Engine 2: Analytics Intelligence</strong><p>Profiles the dataset, surfaces quality issues, finds correlations and anomalies, and builds visual insight cards before modeling.</p></div>
+          <div class="if-engine-card"><strong>Engine 1: AutoML Factory</strong><p>Uses the same dataset to preprocess, engineer features, optimize models, track MLflow runs, and register a reusable prediction pipeline.</p></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def dataset_view(dataset: pd.DataFrame) -> None:
-    st.subheader("Dataset Preview")
+    section_title("Workspace", "Dataset Preview", "Inspect the exact table that flows into analytics, training, and prediction.")
     st.dataframe(dataset.head(100), use_container_width=True)
 
     c1, c2 = st.columns([1, 1])
@@ -208,7 +518,7 @@ def dataset_view(dataset: pd.DataFrame) -> None:
 
 
 def analytics_view(dataset: pd.DataFrame) -> None:
-    st.subheader("Engine 2: Analytics and EDA")
+    section_title("Engine 2", "Analytics and EDA", "Generate a fast intelligence layer before you decide what to train.")
     columns = list(dataset.columns)
     c1, c2, c3 = st.columns(3)
     target = c1.selectbox("Target column", ["None"] + columns, key="eda_target")
@@ -268,7 +578,7 @@ def analytics_view(dataset: pd.DataFrame) -> None:
 
 
 def automl_view(dataset: pd.DataFrame) -> None:
-    st.subheader("Engine 1: AutoML")
+    section_title("Engine 1", "AutoML Factory", "Train, track, compare, and register a production-ready prediction pipeline.")
     columns = list(dataset.columns)
     c1, c2, c3, c4 = st.columns([1.4, 1, 1, 1])
     target = c1.selectbox("Target column", columns, key="ml_target")
@@ -316,7 +626,7 @@ def automl_view(dataset: pd.DataFrame) -> None:
 
 
 def prediction_view(dataset: pd.DataFrame) -> None:
-    st.subheader("Prediction")
+    section_title("Serving", "Prediction", "Score raw rows through the registered full pipeline.")
     st.markdown("<div class='if-band'>Predictions use the registered full pipeline, so raw rows are transformed exactly like training data.</div>", unsafe_allow_html=True)
     sample_size = st.slider("Rows to predict from current dataset", min_value=1, max_value=min(20, len(dataset)), value=min(5, len(dataset)))
     preview = dataset.drop(columns=[st.session_state.get("ml_target")], errors="ignore").head(sample_size)
@@ -336,7 +646,7 @@ def prediction_view(dataset: pd.DataFrame) -> None:
 
 
 def api_view() -> None:
-    st.subheader("API Gateway")
+    section_title("Integration", "API Gateway", "Use the FastAPI routes when the UI needs to connect with another system.")
     st.markdown("Run the API server from the project root:")
     st.code("uvicorn api.main:app --reload", language="bash")
     st.markdown("Then open:")
