@@ -15,7 +15,9 @@ services:
     command: mlflow server --host 0.0.0.0
 
   streamlit:
-    build: ./ui
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
     ports: ['8501:8501']
     environment:
       - API_URL=http://api:8000

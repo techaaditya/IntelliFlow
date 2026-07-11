@@ -13,5 +13,9 @@ uvicorn
 pydantic
 python-multipart
 httpx2
+streamlit
+openpyxl
+pyarrow
+pytest
 seaborn
 matplotlib
