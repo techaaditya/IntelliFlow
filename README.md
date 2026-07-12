@@ -2,7 +2,7 @@
 
 IntelliFlow is a unified data platform that consolidates independent data science workflows into a single, cohesive system. This repository will eventually feature a shared data ingestion layer feeding three pluggable service engines, all accessible through a single API gateway and dashboard UI.
 
-Currently, **Engine 1 (AutoML Pipeline)** and **Engine 2 (Analytics & EDA)** are fully implemented.
+Currently, **Engine 1 (AutoML Pipeline)** and **Engine 2 (Analytics & EDA)** are fully implemented. and Engine 3 is about to be implemented sooner.
 
 ## Features
 
