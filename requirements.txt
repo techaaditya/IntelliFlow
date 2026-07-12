@@ -1,6 +1,9 @@
 pandas
 numpy
 scikit-learn
+scipy
+statsmodels
+plotly
 optuna
 mlflow
 xgboost
@@ -10,5 +13,9 @@ uvicorn
 pydantic
 python-multipart
 httpx2
+streamlit
+openpyxl
+pyarrow
+pytest
 seaborn
 matplotlib

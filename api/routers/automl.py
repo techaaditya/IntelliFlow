@@ -40,6 +40,7 @@ class TrainResponse(BaseModel):
     best_score: float
     best_model_family: str
     best_params: dict[str, Any]
+    test_metrics: dict[str, float] = Field(default_factory=dict)
     model_name: str
     model_version: str | None = None
     model_uri: str
@@ -47,6 +48,8 @@ class TrainResponse(BaseModel):
     task_type: str
     metric: str
     target_column: str
+    n_rows: int
+    n_columns: int
 
 
 class ModelInfoResponse(BaseModel):
@@ -163,6 +166,7 @@ def _train_dataframe(
         best_score=result["best_score"],
         best_model_family=result["best_model_family"],
         best_params=result["best_params"],
+        test_metrics=result["test_metrics"],
         model_name=result["model_name"],
         model_version=result["model_version"],
         model_uri=result["model_uri"],
@@ -170,6 +174,8 @@ def _train_dataframe(
         task_type=result["task_type"],
         metric=result["metric"],
         target_column=result["target_column"],
+        n_rows=result["n_rows"],
+        n_columns=result["n_columns"],
     )
 
 
@@ -177,4 +183,3 @@ def _json_safe_list(values: Any) -> list[Any]:
     if hasattr(values, "tolist"):
         values = values.tolist()
     return [item.item() if hasattr(item, "item") else item for item in values]
-

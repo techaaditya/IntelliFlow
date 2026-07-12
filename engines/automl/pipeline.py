@@ -80,6 +80,18 @@ def run_automl(
         'best_score': result.best_score,
         'best_model_family': result.best_model_family,
         'best_params': result.best_params,
+        'test_metrics': result.test_metrics,
+        'trials': [
+            {
+                "trial_number": trial.trial_number,
+                "model_family": trial.model_family,
+                "cv_score": trial.cv_score,
+                "metrics": trial.metrics,
+                "params": trial.params,
+            }
+            for trial in result.trials
+        ],
+        'feature_names': result.feature_names,
         'model': result.best_model,
         'full_pipeline': full_pipeline,
         'model_name': registry_record.model_name,
