@@ -1,14 +1,14 @@
 # IntelliFlow - Unified Intelligent Data Platform
 
-IntelliFlow is a unified data platform that consolidates independent data science workflows into a single, cohesive system. This repository will eventually feature a shared data ingestion layer feeding three pluggable service engines, all accessible through a single API gateway and dashboard UI.
+IntelliFlow is a unified data platform that consolidates independent data science workflows into a single, cohesive system. A shared dataset feeds three pluggable service engines, all accessible through a single API gateway and Streamlit dashboard.
 
-All three engines are now implemented: **Engine 1 (AutoML Pipeline)**, **Engine 2 (Analytics & EDA)**, and **Engine 3 (Agent Orchestration)**.
+All three engines are implemented: **Engine 1 (AutoML Pipeline)**, **Engine 2 (Analytics & EDA)**, and **Engine 3 (Agent Orchestration)**.
 
 ## Features
 
 * **Engine 1 (AutoML):** Automatically preprocesses data, searches the hyperparameter space using Optuna, tracks experiments with MLflow, and deploys the best model.
-* **Engine 2 (Analytics & EDA):** FAANG-style exploratory data analysis — data profiling with a 0–100 quality score, correlation/feature intelligence (Pearson/Spearman/Cramér's V, VIF, mutual-information target ranking), funnel & cohort-retention analysis, event-stream analytics (sessions, journeys, Kaplan-Meier), anomaly detection (Isolation Forest + STL), and modelling recommendations. Exports JSON, an interactive HTML dashboard, CSV summaries and PNG/SVG charts. See [`engines/analytics/README.md`](engines/analytics/README.md).
-* **Engine 3 (Agent Orchestration):** A multi-agent crew (Planner → Data Analyst → ML Engineer → Visualizer → Researcher → Synthesizer) that answers natural-language questions about the loaded dataset. Agents call real tools — including **Engine 1 (AutoML)** and **Engine 2 (Analytics)** in-process — so a question like *"predict churn"* actually trains and registers a model. The LLM backbone is any OpenAI-compatible endpoint, defaulting to **Ollama Cloud's `gpt-oss:120b`**; long-term memory is a lightweight SQLite store. Built without the heavy CrewAI/LangChain/ChromaDB stack for a robust, conflict-free install.
+* **Engine 2 (Analytics & EDA):** FAANG-style exploratory data analysis - data profiling with a 0–100 quality score, correlation/feature intelligence (Pearson/Spearman/Cramér's V, VIF, mutual-information target ranking), funnel & cohort-retention analysis, event-stream analytics (sessions, journeys, Kaplan-Meier), anomaly detection (Isolation Forest + STL), and modelling recommendations. Exports JSON, an interactive HTML dashboard, CSV summaries and PNG/SVG charts. See [`engines/analytics/README.md`](engines/analytics/README.md).
+* **Engine 3 (Agent Orchestration):** A multi-agent crew (Planner → Data Analyst → ML Engineer → Visualizer → Researcher → Synthesizer) that answers natural-language questions about the loaded dataset. Agents call real tools - including **Engine 1 (AutoML)** and **Engine 2 (Analytics)** in-process - so a question like *"predict churn"* actually trains and registers a model. The LLM backbone is any OpenAI-compatible endpoint, defaulting to **Ollama Cloud's `gpt-oss:120b`**; long-term memory is a lightweight SQLite store. Built without the heavy CrewAI/LangChain/ChromaDB stack for a robust, conflict-free install.
 
 ## Prerequisites
 
@@ -45,8 +45,8 @@ pip install -r requirements.txt
 This installs everything for all engines: pandas, numpy, scikit-learn, scipy,
 statsmodels, plotly, seaborn, matplotlib (data/EDA), optuna, mlflow, xgboost,
 lightgbm (AutoML), fastapi, uvicorn, pydantic (API gateway), and requests +
-ddgs (Engine 3 agent crew). Engine 3 also needs an LLM key — see
-[Engine 3 — Agent Orchestration](#engine-3--agent-orchestration) below.
+ddgs (Engine 3 agent crew). Engine 3 also needs an LLM key - see
+[Engine 3 - Agent Orchestration](#engine-3--agent-orchestration) below.
 
 ---
 
@@ -55,7 +55,7 @@ ddgs (Engine 3 agent crew). Engine 3 also needs an LLM key — see
 Each engine ships a self-contained verification/demo script you can run directly,
 and is also exposed through the shared **API gateway** (see below).
 
-### Engine 1 — AutoML Pipeline
+### Engine 1 - AutoML Pipeline
 
 `scratch_test.py` runs the complete AutoML pipeline on the Iris dataset:
 preprocessing, Optuna hyperparameter optimization across model families
@@ -83,7 +83,7 @@ result = run_automl(dataset=df, target_column="target", metric="accuracy", n_tri
 print(result["best_score"], result["model_uri"])
 ```
 
-### Engine 2 — Analytics & EDA
+### Engine 2 - Analytics & EDA
 
 `scratch_analytics_test.py` builds a synthetic product-analytics dataset and runs
 the full EDA suite, writing a JSON report, an interactive HTML dashboard, CSV
@@ -115,7 +115,7 @@ report.save_csv_summaries("eda_output")
 See [`engines/analytics/README.md`](engines/analytics/README.md) for the full
 capability reference and design notes.
 
-### Engine 3 — Agent Orchestration
+### Engine 3 - Agent Orchestration
 
 Engine 3 answers natural-language questions with a crew of agents that share the
 same dataset and can trigger Engine 1 and Engine 2 as tools.
@@ -130,7 +130,7 @@ cp .env.example .env
 #   OLLAMA_MODEL=gpt-oss:120b
 ```
 
-The backbone is provider-swappable — point `OLLAMA_HOST`/`OLLAMA_MODEL` at a
+The backbone is provider-swappable - point `OLLAMA_HOST`/`OLLAMA_MODEL` at a
 local Ollama daemon, Groq, or any OpenAI-compatible endpoint. Non-secret
 settings (model, temperature, max steps) also live under `agents:` in
 [`config.yaml`](config.yaml).
@@ -181,7 +181,7 @@ Then open the interactive Swagger UI at **http://127.0.0.1:8000/docs**.
 | Engine 2 (Analytics) | `POST /analytics/analyze`, `POST /analytics/upload-analyze`, `POST /analytics/profile`, `GET /analytics/capabilities` |
 | Engine 3 (Agents) | `POST /agents/query`, `POST /agents/upload-query`, `GET /agents/history`, `GET /agents/capabilities` |
 
-Example — run EDA on an uploaded file and get the interactive dashboard back:
+Example - run EDA on an uploaded file and get the interactive dashboard back:
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/analytics/upload-analyze?report_format=html" \
@@ -197,17 +197,18 @@ curl -X POST "http://127.0.0.1:8000/analytics/upload-analyze?report_format=html"
 
 ## Streamlit Dashboard
 
-The integrated dashboard gives one shared dataset workspace for Engine 1 and
-Engine 2:
+The integrated dashboard gives one shared dataset workspace for all three
+engines:
 
 ```bash
 streamlit run ui/app.py
 ```
 
 Open the local URL Streamlit prints, usually **http://localhost:8501**. The UI
-supports CSV/Excel/JSON/Parquet upload, sample datasets, EDA reports, AutoML
-training, registered-model prediction, an **Agents chat tab** (Engine 3), and a
-compact API route reference.
+has six tabs: dataset upload (CSV/Excel/JSON/Parquet or sample datasets),
+EDA reports (Engine 2), AutoML training (Engine 1), registered-model
+prediction, an **Agents chat tab** (Engine 3), and a compact API route
+reference.
 
 ---
 
@@ -217,10 +218,16 @@ compact API route reference.
 python -m pytest tests/ -q
 ```
 
-## Docker Deployment (Future)
+## Docker Deployment
 
-Once all engines, APIs, and the Streamlit UI are built, you can run the entire platform using Docker Compose:
+A `docker-compose.yml` is included to run the API, Streamlit UI, and MLflow
+together:
 
 ```bash
 docker compose up --build
 ```
+
+Set `OLLAMA_API_KEY` (and optionally `OLLAMA_HOST`/`OLLAMA_MODEL`) in your
+shell or a `.env` file before starting - it's passed through to the `api`
+service for Engine 3. This compose setup is not part of the automated test
+suite; verify it in your own environment before relying on it.
