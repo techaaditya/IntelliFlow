@@ -4,6 +4,7 @@ __pycache__/
 .env
 mlruns/
 mlflow.db
+agent_memory.db
 *.log
 eda_output/
 .pytest_cache/
