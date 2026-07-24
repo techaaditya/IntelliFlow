@@ -37,6 +37,7 @@ class HPOResult:
     best_model_family: str
     best_params: dict[str, Any]
     best_score: float
+    test_metrics: dict[str, float]
     metric: str
     task_type: TaskType
     trials: list[TrialResult]
@@ -120,6 +121,7 @@ class HPOEngine:
             best_model_family=best_model_family,
             best_params={"model_family": best_model_family, **best_model_params},
             best_score=float(study.best_value),
+            test_metrics=test_metrics,
             metric=self.metric,
             task_type=self.task_type,
             trials=self.trials_,

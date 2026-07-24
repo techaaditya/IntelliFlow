@@ -149,6 +149,21 @@ curl -X POST "http://127.0.0.1:8000/analytics/upload-analyze?report_format=html"
 
 ---
 
+## Streamlit Dashboard
+
+The integrated dashboard gives one shared dataset workspace for Engine 1 and
+Engine 2:
+
+```bash
+streamlit run ui/app.py
+```
+
+Open the local URL Streamlit prints, usually **http://localhost:8501**. The UI
+supports CSV/Excel/JSON/Parquet upload, sample datasets, EDA reports, AutoML
+training, registered-model prediction, and a compact API route reference.
+
+---
+
 ## Running the Tests
 
 ```bash
