@@ -1,9 +1,16 @@
-"""Streamlit dashboard for IntelliFlow Engines 1, 2, and 3."""
+"""Streamlit dashboard for IntelliFlow Engines 1, 2, and 3.
+
+This module is orchestration only: it loads a dataset, calls the engines, and
+hands the results to :mod:`ui.components` for rendering. All styling lives in
+:mod:`ui.theme`, and the engines themselves are untouched -- chart theming is
+applied by post-processing the figure returned by ``to_plotly``.
+"""
 
 from __future__ import annotations
 
 import io
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -22,525 +29,234 @@ from engines.analytics import run_eda
 from engines.analytics.visualization import to_plotly
 from engines.automl.pipeline import detect_task_type, run_automl
 from engines.automl.registry import AutoMLRegistry
+from ui import components as ui
+from ui import theme
 
+theme.page_config()
 
-st.set_page_config(page_title="IntelliFlow", page_icon="IF", layout="wide")
-
-
-CSS = """
-<style>
-:root {
-  --if-ink: #111827;
-  --if-muted: #667085;
-  --if-border: #d6deea;
-  --if-panel: #ffffff;
-  --if-soft: #f7f9fd;
-  --if-midnight: #0b1020;
-  --if-navy: #111a31;
-  --if-teal: #00a991;
-  --if-blue: #3167ff;
-  --if-violet: #7c3aed;
-  --if-amber: #f59e0b;
-  --if-red: #b42318;
-  --if-shadow: 0 18px 50px rgba(20, 28, 45, .12);
-}
-.stApp {
-  background:
-    linear-gradient(180deg, #f7fbff 0%, #eef3f8 46%, #f9fbfd 100%);
-  color: var(--if-ink);
-}
-.block-container {
-  padding-top: 1rem;
-  padding-bottom: 3rem;
-  max-width: 1500px;
-}
-[data-testid="stSidebar"] {
-  background:
-    linear-gradient(180deg, #0b1020 0%, #111a31 58%, #172033 100%);
-  border-right: 1px solid rgba(255,255,255,.08);
-}
-[data-testid="stSidebar"] * {
-  color: #e5edf7;
-}
-[data-testid="stSidebar"] [data-testid="stFileUploader"] section {
-  background: rgba(255,255,255,.08);
-  border-color: rgba(255,255,255,.18);
-}
-[data-testid="stSidebar"] [data-testid="stFileUploader"] button {
-  background: #ffffff;
-  color: #111827;
-}
-[data-testid="stSidebar"] [data-baseweb="radio"] label {
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: 8px;
-  padding: .32rem .5rem;
-  margin-bottom: .25rem;
-}
-h1, h2, h3 {
-  letter-spacing: 0;
-  color: var(--if-ink);
-}
-p, label, span, div {
-  letter-spacing: 0;
-}
-.stMarkdown, .stText, [data-testid="stMarkdownContainer"] {
-  color: var(--if-ink);
-}
-.if-shell {
-  background: rgba(255,255,255,.78);
-  border: 1px solid rgba(214,222,234,.85);
-  border-radius: 8px;
-  box-shadow: var(--if-shadow);
-  overflow: hidden;
-}
-.if-hero {
-  position: relative;
-  background:
-    linear-gradient(135deg, #0b1020 0%, #13213d 48%, #123b47 100%);
-  border-radius: 8px;
-  color: #ffffff;
-  padding: 1.35rem 1.5rem;
-  margin-bottom: 1rem;
-  overflow: hidden;
-}
-.if-hero:before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px);
-  background-size: 34px 34px;
-  opacity: .32;
-}
-.if-hero > * {
-  position: relative;
-  z-index: 1;
-}
-.if-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: .95rem;
-}
-.if-brand {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-}
-.if-mark {
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #00a991 0%, #3167ff 100%);
-  display: grid;
-  place-items: center;
-  font-weight: 900;
-  letter-spacing: 0;
-  color: #ffffff;
-  box-shadow: 0 12px 32px rgba(0,169,145,.28);
-}
-.if-title-row h1 {
-  margin: 0;
-  font-size: 2.05rem;
-  color: #ffffff;
-}
-.if-title-row span, .if-hero p {
-  color: #c7d7ea;
-  font-size: .95rem;
-}
-.if-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  border-radius: 999px;
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(255,255,255,.18);
-  color: #e8f1ff;
-  padding: .42rem .72rem;
-  font-size: .82rem;
-  white-space: nowrap;
-}
-.if-hero-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: .75rem;
-}
-.if-hero-card {
-  background: rgba(255,255,255,.10);
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 8px;
-  padding: .85rem;
-  min-height: 92px;
-}
-.if-hero-card strong {
-  display: block;
-  color: #ffffff;
-  margin-bottom: .35rem;
-}
-.if-hero-card span {
-  color: #c7d7ea;
-  font-size: .84rem;
-}
-.if-sidebar-brand {
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.08);
-  border-radius: 8px;
-  padding: .85rem;
-  margin: .35rem 0 1rem;
-}
-.if-sidebar-brand strong {
-  display: block;
-  font-size: 1.08rem;
-  color: #ffffff;
-}
-.if-sidebar-brand span {
-  color: #b7c5d7;
-  font-size: .82rem;
-}
-.if-band {
-  background: var(--if-soft);
-  border: 1px solid var(--if-border);
-  border-radius: 8px;
-  color: var(--if-ink);
-  padding: 1rem;
-  margin: .65rem 0 1rem;
-  box-shadow: 0 10px 28px rgba(20, 28, 45, .06);
-}
-.if-section-title {
-  margin: 1.35rem 0 .8rem;
-}
-.if-section-title span {
-  color: var(--if-blue);
-  font-size: .76rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-.if-section-title h2 {
-  margin: .15rem 0 .2rem;
-  font-size: 1.55rem;
-}
-.if-section-title p {
-  margin: 0;
-  color: var(--if-muted);
-}
-.if-stat-card {
-  position: relative;
-  background: #ffffff;
-  border: 1px solid var(--if-border);
-  border-radius: 8px;
-  padding: 1rem;
-  min-height: 118px;
-  overflow: hidden;
-  box-shadow: 0 14px 35px rgba(20, 28, 45, .08);
-}
-.if-stat-card:before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--if-blue), var(--if-teal));
-}
-.if-stat-label {
-  color: var(--if-muted);
-  font-size: .78rem;
-  text-transform: uppercase;
-  font-weight: 800;
-}
-.if-stat-value {
-  font-size: 2rem;
-  line-height: 1.15;
-  font-weight: 850;
-  color: var(--if-ink);
-  margin-top: .45rem;
-}
-.if-stat-note {
-  color: var(--if-muted);
-  font-size: .84rem;
-  margin-top: .38rem;
-}
-.if-engine-strip {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .85rem;
-  margin: .9rem 0 1rem;
-}
-.if-engine-card {
-  border-radius: 8px;
-  padding: 1rem;
-  background: #ffffff;
-  border: 1px solid var(--if-border);
-  box-shadow: 0 14px 35px rgba(20, 28, 45, .08);
-}
-.if-engine-card strong {
-  color: var(--if-ink);
-  font-size: 1rem;
-}
-.if-engine-card p {
-  margin: .35rem 0 0;
-  color: var(--if-muted);
-  font-size: .88rem;
-}
-.if-empty {
-  background:
-    linear-gradient(135deg, #ffffff 0%, #f5f8ff 100%);
-  border: 1px solid var(--if-border);
-  border-radius: 8px;
-  padding: 1.25rem;
-  box-shadow: var(--if-shadow);
-}
-.if-empty h2 {
-  margin: 0 0 .35rem;
-}
-.if-empty-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: .8rem;
-  margin-top: 1rem;
-}
-.if-step {
-  border-radius: 8px;
-  border: 1px solid var(--if-border);
-  background: #ffffff;
-  padding: .85rem;
-}
-.if-step b {
-  color: var(--if-blue);
-}
-.if-status {
-  display: inline-block;
-  border-radius: 999px;
-  border: 1px solid var(--if-border);
-  padding: .18rem .55rem;
-  font-size: .78rem;
-  color: var(--if-muted);
-  background: #fff;
-}
-.if-critical { color: var(--if-red); font-weight: 700; }
-.if-warning { color: var(--if-amber); font-weight: 700; }
-.if-info { color: var(--if-blue); font-weight: 700; }
-.if-ok { color: var(--if-teal); font-weight: 700; }
-div[data-testid="stTabs"] button {
-  min-height: 2.8rem;
-  color: var(--if-ink);
-  border-radius: 8px 8px 0 0;
-}
-div[data-testid="stTabs"] button[aria-selected="true"] {
-  border-bottom-color: var(--if-teal);
-  color: var(--if-teal);
-}
-[data-testid="stAlert"] {
-  border-radius: 8px;
-  border: 1px solid #c7d2fe;
-  background: #eef4ff;
-  color: var(--if-ink);
-}
-[data-testid="stButton"] button[kind="primary"] {
-  background: linear-gradient(90deg, #0f766e 0%, #3167ff 100%);
-  border: 0;
-  color: #ffffff;
-  min-height: 3rem;
-  border-radius: 8px;
-  box-shadow: 0 16px 30px rgba(49,103,255,.18);
-}
-[data-testid="stButton"] button[kind="primary"] * {
-  color: #ffffff;
-}
-@media (max-width: 900px) {
-  .if-hero-grid, .if-engine-strip, .if-empty-grid {
-    grid-template-columns: 1fr;
-  }
-  .if-title-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-</style>
-"""
+MAX_INSIGHTS = 12
+MAX_CHARTS = 8
 
 
 def main() -> None:
-    st.markdown(CSS, unsafe_allow_html=True)
-    render_header()
+    active_theme = theme.current_theme()
+    theme.inject(active_theme)
 
-    dataset = sidebar_dataset()
+    dataset = sidebar()
+    render_header(dataset)
+
     if dataset is None:
-        empty_state()
+        ui.empty_state()
         return
 
     st.session_state["dataset"] = dataset
+    forget_stale_results(dataset)
     overview(dataset)
-    engine_strip()
+    ui.engine_cards()
 
     dataset_tab, analytics_tab, automl_tab, predict_tab, agents_tab, api_tab = st.tabs(
-        ["01 Dataset", "02 Analytics", "03 AutoML", "04 Prediction", "05 Agents", "06 API"]
+        ["Dataset", "Analytics", "AutoML", "Prediction", "Agents", "API"]
     )
     with dataset_tab:
         dataset_view(dataset)
     with analytics_tab:
-        analytics_view(dataset)
+        analytics_view(dataset, active_theme)
     with automl_tab:
         automl_view(dataset)
     with predict_tab:
         prediction_view(dataset)
     with agents_tab:
-        agents_view(dataset)
+        agents_view(dataset, active_theme)
     with api_tab:
         api_view()
 
 
-def sidebar_dataset() -> pd.DataFrame | None:
+# ------------------------------------------------------------------- sidebar
+def sidebar() -> pd.DataFrame | None:
+    """Brand block, appearance toggle, and the dataset source picker."""
+
     with st.sidebar:
-        st.markdown(
-            "<div class='if-sidebar-brand'><strong>IntelliFlow</strong><span>Dataset in. Intelligence out.</span></div>",
-            unsafe_allow_html=True,
+        ui.render(
+            '<div class="if-brand" style="margin:.35rem 0 1.1rem">',
+            '<div class="if-mark">IF</div>',
+            '<div><strong style="display:block;font-size:1rem;color:var(--if-ink)">IntelliFlow</strong>',
+            '<span style="color:var(--if-muted);font-size:.8rem">Dataset in. Intelligence out.</span>',
+            "</div></div>",
         )
-        st.subheader("Dataset")
-        source = st.radio("Source", ["Upload file", "Iris sample", "Product analytics sample"], label_visibility="collapsed")
+
+        st.radio(
+            "Appearance",
+            options=list(theme.THEMES),
+            format_func=str.capitalize,
+            horizontal=True,
+            key="theme",
+        )
+
+        st.markdown("### Dataset")
+        source = st.radio(
+            "Source",
+            ["Upload file", "Iris sample", "Product analytics sample"],
+            key="data_source",
+            label_visibility="collapsed",
+        )
+
+        dataset: pd.DataFrame | None
         if source == "Upload file":
-            uploaded = st.file_uploader("CSV, Excel, JSON, or Parquet", type=["csv", "tsv", "xlsx", "xls", "json", "parquet"])
+            uploaded = st.file_uploader(
+                "CSV, Excel, JSON, or Parquet",
+                type=["csv", "tsv", "xlsx", "xls", "json", "parquet"],
+            )
             if uploaded is None:
-                return st.session_state.get("dataset")
-            try:
-                return read_uploaded(uploaded)
-            except Exception as exc:
-                st.error(f"Could not read file: {exc}")
-                return None
-        if source == "Iris sample":
-            return iris_sample()
-        return product_analytics_sample()
+                dataset = st.session_state.get("dataset")
+            else:
+                try:
+                    dataset = read_uploaded(uploaded)
+                except Exception as exc:
+                    st.error(f"Could not read file: {exc}")
+                    dataset = None
+        elif source == "Iris sample":
+            dataset = iris_sample()
+        else:
+            dataset = product_analytics_sample()
+
+        if dataset is not None:
+            ui.render(
+                '<div class="if-callout" style="margin-top:1rem">',
+                f"<div><strong>{dataset.shape[0]:,}</strong> rows &middot; "
+                f"<strong>{dataset.shape[1]:,}</strong> columns loaded</div></div>",
+            )
+        return dataset
 
 
-def render_header() -> None:
-    st.markdown(
-        """
-        <section class="if-hero">
-          <div class="if-title-row">
-            <div class="if-brand">
-              <div class="if-mark">IF</div>
-              <div>
-                <h1>IntelliFlow Command Center</h1>
-                <span>Unified AutoML, EDA, model registry, and prediction workspace</span>
-              </div>
-            </div>
-            <div class="if-pill">Engine 1 + Engine 2 integrated</div>
-          </div>
-          <div class="if-hero-grid">
-            <div class="if-hero-card"><strong>Analyze</strong><span>Profile data quality, correlations, anomalies, trends, and product behavior.</span></div>
-            <div class="if-hero-card"><strong>Train</strong><span>Run preprocessing, feature engineering, HPO, tracking, and registry in one flow.</span></div>
-            <div class="if-hero-card"><strong>Deploy</strong><span>Use the registered pipeline for consistent raw-row predictions.</span></div>
-          </div>
-        </section>
-        """,
-        unsafe_allow_html=True,
-    )
+def forget_stale_results(dataset: pd.DataFrame) -> None:
+    """Drop results that describe a *different* dataset.
+
+    Every result panel is captioned as if it belongs to the table on screen, so
+    a report computed from the previous dataset must not survive a switch.
+    """
+
+    signature = (tuple(str(column) for column in dataset.columns), dataset.shape)
+    if st.session_state.get("dataset_signature") == signature:
+        return
+    st.session_state["dataset_signature"] = signature
+    for key in ("eda_report", "automl_result", "agent_result", "agent_history"):
+        st.session_state.pop(key, None)
 
 
-def empty_state() -> None:
-    st.markdown(
-        """
-        <div class="if-empty">
-          <h2>Start with a dataset</h2>
-          <p>Upload your own file or choose a sample from the left panel. The same dataset powers Engine 2 analytics and Engine 1 AutoML, so you can inspect the data before training.</p>
-          <div class="if-empty-grid">
-            <div class="if-step"><b>01</b><br><strong>Load</strong><br><span>CSV, Excel, JSON, Parquet, or built-in samples.</span></div>
-            <div class="if-step"><b>02</b><br><strong>Understand</strong><br><span>Run EDA, quality scoring, insights, and visualizations.</span></div>
-            <div class="if-step"><b>03</b><br><strong>Model</strong><br><span>Train and register a complete AutoML prediction pipeline.</span></div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def stat_card(label: str, value: str, note: str) -> None:
-    st.markdown(
-        f"""
-        <div class="if-stat-card">
-          <div class="if-stat-label">{label}</div>
-          <div class="if-stat-value">{value}</div>
-          <div class="if-stat-note">{note}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def section_title(kicker: str, title: str, description: str) -> None:
-    st.markdown(
-        f"""
-        <div class="if-section-title">
-          <span>{kicker}</span>
-          <h2>{title}</h2>
-          <p>{description}</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+def render_header(dataset: pd.DataFrame | None) -> None:
+    meta: list[tuple[str, str | None]] = [
+        ("Analytics", "accent"),
+        ("AutoML", "accent"),
+        ("Agents", "accent"),
+    ]
+    if dataset is not None:
+        meta.append((f"{len(dataset):,} rows loaded", None))
+    ui.hero(
+        "IntelliFlow Command Center",
+        "One workspace for exploratory analytics, automated modelling, and an agent crew that uses both.",
+        meta,
     )
 
 
 def overview(dataset: pd.DataFrame) -> None:
     numeric = len(dataset.select_dtypes(include=np.number).columns)
     missing = int(dataset.isna().sum().sum())
-    duplicate_rows = int(dataset.duplicated().sum())
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        stat_card("Rows", f"{len(dataset):,}", "Records available for analysis")
-    with c2:
-        stat_card("Columns", f"{dataset.shape[1]:,}", "Fields detected in the workspace")
-    with c3:
-        stat_card("Numeric", f"{numeric:,}", "Columns ready for scoring and charts")
-    with c4:
-        stat_card("Missing cells", f"{missing:,}", f"{duplicate_rows} duplicate rows")
-
-
-def engine_strip() -> None:
-    st.markdown(
-        """
-        <div class="if-engine-strip">
-          <div class="if-engine-card"><strong>Engine 2: Analytics Intelligence</strong><p>Profiles the dataset, surfaces quality issues, finds correlations and anomalies, and builds visual insight cards before modeling.</p></div>
-          <div class="if-engine-card"><strong>Engine 1: AutoML Factory</strong><p>Uses the same dataset to preprocess, engineer features, optimize models, track MLflow runs, and register a reusable prediction pipeline.</p></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    duplicates = int(dataset.duplicated().sum())
+    cells = int(dataset.size) or 1
+    ui.stat_row(
+        [
+            ui.stat_card("Rows", f"{len(dataset):,}", "Records available for analysis"),
+            ui.stat_card("Columns", f"{dataset.shape[1]:,}", f"{numeric:,} numeric, {dataset.shape[1] - numeric:,} other"),
+            ui.stat_card("Missing cells", f"{missing:,}", f"{missing / cells:.1%} of the table"),
+            ui.stat_card("Duplicate rows", f"{duplicates:,}", "Exact repeats across all columns"),
+        ]
     )
 
 
+# ------------------------------------------------------------------- dataset
 def dataset_view(dataset: pd.DataFrame) -> None:
-    section_title("Workspace", "Dataset Preview", "Inspect the exact table that flows into analytics, training, and prediction.")
-    st.dataframe(dataset.head(100), use_container_width=True)
+    ui.section_header(
+        "Workspace",
+        "Dataset preview",
+        "The exact table that flows into analytics, training, prediction, and the agent crew.",
+    )
+    st.dataframe(dataset.head(100), width="stretch", height=380)
+    ui.note(f"Showing the first {min(100, len(dataset)):,} of {len(dataset):,} rows.")
 
-    c1, c2 = st.columns([1, 1])
-    with c1:
-        st.subheader("Column Types")
-        types = pd.DataFrame({"column": dataset.columns, "dtype": [str(dataset[c].dtype) for c in dataset.columns]})
-        st.dataframe(types, use_container_width=True, hide_index=True)
-    with c2:
-        st.subheader("Missing Values")
-        missing = dataset.isna().sum().reset_index()
-        missing.columns = ["column", "missing"]
-        st.dataframe(missing.sort_values("missing", ascending=False), use_container_width=True, hide_index=True)
+    left, right = st.columns(2)
+    with left:
+        st.markdown("#### Column types")
+        ui.render(
+            '<div class="if-kv"><div class="if-kv-title">Detected dtypes</div>',
+            *[
+                '<div class="if-kv-row">'
+                f'<span class="if-kv-key">{ui.esc(column)}</span>'
+                f'<span class="if-kv-val">{ui.chip(str(dataset[column].dtype), tone=_dtype_tone(dataset[column]))}</span>'
+                "</div>"
+                for column in dataset.columns
+            ],
+            "</div>",
+        )
+    with right:
+        st.markdown("#### Missing values")
+        missing = dataset.isna().sum()
+        missing = missing[missing > 0].sort_values(ascending=False)
+        if missing.empty:
+            ui.callout(
+                "<strong>No missing values.</strong> Every cell in the table is populated.",
+                tone="success",
+                icon="✓",
+            )
+        else:
+            ui.kv_panel(
+                "Cells missing per column",
+                {
+                    column: f"{int(count):,}  ({count / len(dataset):.1%})"
+                    for column, count in missing.items()
+                },
+            )
+        st.markdown("#### Unique values")
+        ui.kv_panel(
+            "Distinct values per column",
+            {column: int(dataset[column].nunique(dropna=True)) for column in dataset.columns},
+        )
 
 
-def analytics_view(dataset: pd.DataFrame) -> None:
-    section_title("Engine 2", "Analytics and EDA", "Generate a fast intelligence layer before you decide what to train.")
+def _dtype_tone(series: pd.Series) -> str:
+    if pd.api.types.is_bool_dtype(series):
+        return "warning"
+    if pd.api.types.is_numeric_dtype(series):
+        return "accent"
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return "success"
+    return "default"
+
+
+# ----------------------------------------------------------------- analytics
+def analytics_view(dataset: pd.DataFrame, active_theme: str) -> None:
+    ui.section_header(
+        "Engine 2",
+        "Analytics and EDA",
+        "Profiling, correlations, anomalies, and product behaviour — a fast intelligence "
+        "layer before you decide what to train.",
+    )
+
     columns = list(dataset.columns)
-    c1, c2, c3 = st.columns(3)
-    target = c1.selectbox("Target column", ["None"] + columns, key="eda_target")
-    timestamp = c2.selectbox("Timestamp column", ["None"] + columns, key="eda_time")
-    user_id = c3.selectbox("User ID column", ["None"] + columns, key="eda_user")
-    c4, c5, c6 = st.columns(3)
-    event = c4.selectbox("Event column", ["None"] + columns, key="eda_event")
-    segment = c5.multiselect("Segment columns", columns, key="eda_segment")
-    funnel_steps = c6.text_input("Funnel steps", placeholder="launch,purchase,repeat")
+    with st.container(border=True):
+        st.markdown("**Configure the run** — every column you map unlocks another capability.")
+        c1, c2, c3 = st.columns(3)
+        target = c1.selectbox("Target column", ["None"] + columns, key="eda_target")
+        timestamp = c2.selectbox("Timestamp column", ["None"] + columns, key="eda_time")
+        user_id = c3.selectbox("User ID column", ["None"] + columns, key="eda_user")
+        c4, c5, c6 = st.columns(3)
+        event = c4.selectbox("Event column", ["None"] + columns, key="eda_event")
+        segment = c5.multiselect("Segment columns", columns, key="eda_segment")
+        funnel_steps = c6.text_input("Funnel steps", placeholder="launch,purchase,repeat")
+        run = st.button("Run analytics", type="primary", width="stretch")
 
-    if st.button("Run analytics", type="primary", use_container_width=True):
-        with st.spinner("Running profiling, correlations, anomalies, and available product analytics..."):
-            report = run_eda(
+    if run:
+        with st.spinner("Profiling, correlating, and hunting anomalies…"):
+            st.session_state["eda_report"] = run_eda(
                 dataset,
                 target_column=none_to_value(target),
                 timestamp_column=none_to_value(timestamp),
@@ -550,143 +266,281 @@ def analytics_view(dataset: pd.DataFrame) -> None:
                 funnel_steps=csv_list(funnel_steps),
                 target_event=None,
             )
-            st.session_state["eda_report"] = report
 
     report = st.session_state.get("eda_report")
     if not report:
-        st.markdown("<div class='if-band'>Run analytics to generate quality scores, insights, and charts.</div>", unsafe_allow_html=True)
+        ui.callout(
+            "Run analytics to generate a quality score, ranked insights, and themed charts.",
+            icon="→",
+        )
         return
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Quality score", f"{report.data_quality_score:.0f}" if report.data_quality_score is not None else "N/A")
-    c2.metric("Grade", report.data_quality_grade or "N/A")
-    c3.metric("Insights", len(report.insights))
-    c4.metric("Capabilities", len(report.results))
+    critical = sum(1 for insight in report.insights if insight.severity == "critical")
+    warnings = sum(1 for insight in report.insights if insight.severity == "warning")
 
-    if report.errors:
-        with st.expander("Capability errors"):
-            st.json(report.errors)
-
-    st.subheader("Top Insights")
-    for insight in report.insights[:12]:
-        severity_class = f"if-{insight.severity}"
-        st.markdown(
-            f"<div class='if-band'><span class='{severity_class}'>{insight.severity.upper()}</span> "
-            f"<strong>{insight.title}</strong><br>{insight.insight}<br><span class='if-status'>{insight.confidence_label} confidence</span> "
-            f"{insight.action}</div>",
-            unsafe_allow_html=True,
+    score_col, stats_col = st.columns([1.05, 1.95])
+    with score_col:
+        ui.score_display(
+            report.data_quality_score,
+            report.data_quality_grade,
+            f"Rolled up across {len(report.results)} capabilities.",
+        )
+    with stats_col:
+        ui.stat_row(
+            [
+                ui.stat_card("Insights", f"{len(report.insights):,}", "Ranked most urgent first"),
+                ui.stat_card("Critical", f"{critical:,}", "Need attention before modelling"),
+                ui.stat_card("Warnings", f"{warnings:,}", "Worth reviewing"),
+            ],
+            columns=3,
         )
 
+    ui.section_header("Findings", "Top insights", "Ordered by severity, then confidence.")
+    ui.insight_grid(report.insights[:MAX_INSIGHTS])
+    if len(report.insights) > MAX_INSIGHTS:
+        ui.note(f"Showing {MAX_INSIGHTS} of {len(report.insights):,} insights.")
+
     if report.charts:
-        st.subheader("Visualizations")
-        for chart in report.charts[:8]:
-            try:
-                st.plotly_chart(to_plotly(chart), use_container_width=True)
-            except Exception as exc:
-                st.warning(f"Could not render {chart.title}: {exc}")
+        ui.section_header("Evidence", "Visualizations", "Charts emitted by the capabilities that ran.")
+        render_charts(report.charts[:MAX_CHARTS], active_theme)
+
+    if report.errors:
+        with st.expander(f"Capability notes ({len(report.errors)})"):
+            ui.kv_panel("Capabilities that could not complete", report.errors)
 
 
+def render_charts(charts: list[Any], active_theme: str, columns: int = 2) -> None:
+    """Two-up chart grid; each figure is re-skinned to the active theme."""
+
+    for row_start in range(0, len(charts), columns):
+        row = charts[row_start : row_start + columns]
+        for slot, spec in zip(st.columns(len(row)), row):
+            with slot:
+                try:
+                    ui.chart(theme.style_figure(to_plotly(spec), active_theme))
+                except Exception as exc:  # one bad spec must not sink the grid
+                    ui.callout(
+                        f"Could not render <strong>{ui.esc(spec.title)}</strong>: {ui.esc(exc)}",
+                        tone="warning",
+                        icon="!",
+                    )
+
+
+# -------------------------------------------------------------------- automl
 def automl_view(dataset: pd.DataFrame) -> None:
-    section_title("Engine 1", "AutoML Factory", "Train, track, compare, and register a production-ready prediction pipeline.")
-    columns = list(dataset.columns)
-    c1, c2, c3, c4 = st.columns([1.4, 1, 1, 1])
-    target = c1.selectbox("Target column", columns, key="ml_target")
-    task_choice = c2.selectbox("Task type", ["auto", "classification", "regression"], key="ml_task")
-    metric_default = "accuracy" if detect_task_type(dataset[target]) == "classification" else "r2"
-    metric = c3.text_input("Metric", value=metric_default, key="ml_metric")
-    n_trials = c4.number_input("Trials", min_value=1, max_value=100, value=5, step=1)
-
-    st.markdown(
-        "<div class='if-band'>AutoML trains Random Forest, XGBoost, and LightGBM when available, tracks trials in MLflow, and registers the complete prediction pipeline.</div>",
-        unsafe_allow_html=True,
+    ui.section_header(
+        "Engine 1",
+        "AutoML factory",
+        "Preprocess, engineer features, optimise, track in MLflow, and register a servable pipeline.",
     )
-    if st.button("Train and register model", type="primary", use_container_width=True):
-        with st.spinner("Training AutoML pipeline. This can take a few minutes."):
-            result = run_automl(
+
+    columns = list(dataset.columns)
+    with st.container(border=True):
+        st.markdown("**Training run** — the registered pipeline is what the Prediction tab serves.")
+        c1, c2, c3, c4 = st.columns([1.5, 1, 1, 1])
+        target = c1.selectbox("Target column", columns, key="ml_target")
+        task_choice = c2.selectbox("Task type", ["auto", "classification", "regression"], key="ml_task")
+        metric_default = "accuracy" if detect_task_type(dataset[target]) == "classification" else "r2"
+        # Keying the metric on the target makes the default follow the detected
+        # task instead of stranding "r2" on a classification run.
+        metric = c3.text_input("Metric", value=metric_default, key=f"ml_metric::{target}")
+        n_trials = c4.number_input("Trials", min_value=1, max_value=100, value=5, step=1)
+        run = st.button("Train and register model", type="primary", width="stretch")
+
+    ui.callout(
+        "Random Forest, XGBoost, and LightGBM compete when installed. Every trial is tracked "
+        "in MLflow and the winning <strong>full pipeline</strong> is registered, so raw rows can "
+        "be scored later without repeating any preprocessing.",
+        icon="ℹ",
+    )
+
+    if run:
+        with st.spinner("Training the AutoML pipeline — this can take a few minutes…"):
+            st.session_state["automl_result"] = run_automl(
                 dataset=dataset,
                 target_column=target,
                 metric=metric,
                 n_trials=int(n_trials),
                 task_type=task_choice,
             )
-            st.session_state["automl_result"] = result
 
     result = st.session_state.get("automl_result")
     if not result:
         return
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Best score", f"{result['best_score']:.4f}")
-    c2.metric("Model family", result["best_model_family"])
-    c3.metric("Task", result["task_type"])
-    c4.metric("Version", result.get("model_version") or "N/A")
+    headline, side = st.columns([1, 2])
+    with headline:
+        ui.render(
+            '<div class="if-card" style="border-top:2px solid var(--if-accent)">',
+            f'<div class="if-stat-label">Best {ui.esc(result.get("metric", "score"))}</div>',
+            f'<div class="if-stat-value" style="font-size:2.6rem">{result["best_score"]:.4f}</div>',
+            f'<div class="if-stat-note">Cross-validated on the {ui.esc(result["task_type"])} task</div>',
+            "</div>",
+        )
+    with side:
+        ui.stat_row(
+            [
+                ui.stat_card("Model family", str(result["best_model_family"]).replace("_", " ").title(), "Winner of the search"),
+                ui.stat_card("Target", str(result.get("target_column", "—")), "Column the pipeline predicts"),
+                ui.stat_card("Version", str(result.get("model_version") or "—"), f"Registered as {result.get('model_name', 'model')}"),
+            ],
+            columns=3,
+        )
 
-    st.subheader("Registered Model")
-    st.code(result["model_uri"])
-    st.subheader("Test Metrics")
-    st.json(result.get("test_metrics", {}))
-    st.subheader("Best Parameters")
-    st.json(result["best_params"])
+    ui.callout(
+        "<strong>Registered model URI</strong> — load it anywhere with <code>mlflow.pyfunc.load_model</code>.",
+        tone="success",
+        icon="✓",
+        code=str(result["model_uri"]),
+    )
+
+    left, right = st.columns(2)
+    with left:
+        ui.kv_panel("Test metrics", result.get("test_metrics") or {}, empty="No hold-out metrics recorded.")
+    with right:
+        ui.kv_panel("Best hyper-parameters", result.get("best_params") or {}, empty="The winner used its defaults.")
 
     trials = pd.DataFrame(result.get("trials", []))
     if not trials.empty:
-        st.subheader("Trial Leaderboard")
-        st.dataframe(trials.sort_values("cv_score", ascending=False), use_container_width=True, hide_index=True)
+        ui.section_header("Search", "Trial leaderboard", "Every configuration the optimiser evaluated.")
+        table = trials.sort_values("cv_score", ascending=False).reset_index(drop=True)
+        table.insert(0, "rank", range(1, len(table) + 1))
+        display = table[["rank", "model_family", "cv_score", "params"]].copy()
+        display["params"] = display["params"].map(_compact_params)
+        low, high = _score_bounds(display["cv_score"])
+        st.dataframe(
+            display,
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "rank": st.column_config.NumberColumn("#", width="small"),
+                "model_family": st.column_config.TextColumn("Model family"),
+                "cv_score": st.column_config.ProgressColumn(
+                    "CV score", format="%.4f", min_value=low, max_value=high
+                ),
+                "params": st.column_config.TextColumn("Parameters", width="large"),
+            },
+        )
 
 
+def _score_bounds(scores: pd.Series) -> tuple[float, float]:
+    """Progress-bar bounds that survive negative, NaN, or all-equal scores."""
+
+    numeric = pd.to_numeric(scores, errors="coerce").dropna()
+    if numeric.empty:
+        return 0.0, 1.0
+    low = min(0.0, float(numeric.min()))
+    high = float(numeric.max())
+    return (low, high) if high > low else (low, low + 1.0)
+
+
+def _compact_params(params: Any) -> str:
+    if not isinstance(params, dict):
+        return str(params)
+    return ", ".join(f"{key}={value}" for key, value in params.items())
+
+
+# ---------------------------------------------------------------- prediction
 def prediction_view(dataset: pd.DataFrame) -> None:
-    section_title("Serving", "Prediction", "Score raw rows through the registered full pipeline.")
-    st.markdown("<div class='if-band'>Predictions use the registered full pipeline, so raw rows are transformed exactly like training data.</div>", unsafe_allow_html=True)
-    sample_size = st.slider("Rows to predict from current dataset", min_value=1, max_value=min(20, len(dataset)), value=min(5, len(dataset)))
-    preview = dataset.drop(columns=[st.session_state.get("ml_target")], errors="ignore").head(sample_size)
-    edited = st.data_editor(preview, use_container_width=True, num_rows="dynamic")
+    ui.section_header(
+        "Serving",
+        "Prediction",
+        "Score raw rows through the registered full pipeline — the same transforms as training.",
+    )
 
-    if st.button("Predict with registered model", type="primary", use_container_width=True):
-        try:
-            registry = AutoMLRegistry()
-            predictions = registry.predict(edited)
-            st.success("Prediction complete.")
-            output = edited.copy()
-            output["prediction"] = predictions
-            st.dataframe(output, use_container_width=True, hide_index=True)
-            st.code(registry.get_model_uri())
-        except Exception as exc:
-            st.error(f"Prediction failed: {exc}")
+    with st.container(border=True):
+        st.markdown("**Rows to score** — edit any cell, or add rows with the ✚ control.")
+        sample_size = st.slider(
+            "Rows from the current dataset",
+            min_value=1,
+            max_value=min(20, len(dataset)),
+            value=min(5, len(dataset)),
+        )
+        preview = dataset.drop(columns=[st.session_state.get("ml_target")], errors="ignore").head(sample_size)
+        edited = st.data_editor(preview, width="stretch", num_rows="dynamic")
+        predict = st.button("Predict with registered model", type="primary", width="stretch")
+
+    if not predict:
+        return
+
+    try:
+        registry = AutoMLRegistry()
+        predictions = registry.predict(edited)
+    except Exception as exc:
+        ui.callout(
+            f"<strong>Prediction failed.</strong> {ui.esc(exc)}",
+            tone="danger",
+            icon="✕",
+        )
+        return
+
+    # A dataset can legitimately carry its own "prediction" column; the model's
+    # output replaces it rather than colliding with it.
+    output = edited.drop(columns=["prediction"], errors="ignore").copy()
+    output.insert(0, "prediction", predictions)
+    ui.callout(
+        f"<strong>{len(output):,} row(s) scored</strong> through the registered pipeline.",
+        tone="success",
+        icon="✓",
+    )
+    st.dataframe(
+        output,
+        width="stretch",
+        hide_index=True,
+        column_config={"prediction": st.column_config.TextColumn("▸ Prediction", width="medium")},
+    )
+    try:
+        ui.callout("<strong>Served by</strong>", tone="accent", icon="◆", code=registry.get_model_uri())
+    except Exception:  # the URI is a nicety, never a failure mode
+        pass
 
 
-def agents_view(dataset: pd.DataFrame) -> None:
-    section_title(
+# -------------------------------------------------------------------- agents
+def agents_view(dataset: pd.DataFrame, active_theme: str) -> None:
+    ui.section_header(
         "Engine 3",
-        "Agent Orchestration",
-        "Ask a question in plain English. A crew of agents analyzes the dataset and can trigger AutoML and Analytics for you.",
+        "Agent orchestration",
+        "Ask in plain English. The crew plans, analyses the loaded dataset, and can trigger "
+        "AutoML and Analytics for you.",
     )
 
     config = get_agent_config()
     if not config.has_credentials:
-        st.markdown(
-            "<div class='if-band'>No LLM key detected. Add <strong>OLLAMA_API_KEY</strong> to a <code>.env</code> "
-            "file in the project root (model <strong>" + config.model + "</strong> via <strong>" + config.host + "</strong>), then rerun.</div>",
-            unsafe_allow_html=True,
+        ui.callout(
+            "<strong>No LLM key detected.</strong> Add <code>OLLAMA_API_KEY</code> to a "
+            f"<code>.env</code> file in the project root — model <strong>{ui.esc(config.model)}</strong> "
+            f"via <strong>{ui.esc(config.host)}</strong> — then rerun. Every other tab works without it.",
+            tone="warning",
+            icon="!",
         )
 
-    if "agent_session" not in st.session_state:
-        import uuid
+    st.session_state.setdefault("agent_session", uuid.uuid4().hex[:12])
+    st.session_state.setdefault("agent_history", [])
 
-        st.session_state["agent_session"] = uuid.uuid4().hex[:12]
-
-    st.markdown(
-        "<div class='if-band'>The crew (Planner, Data Analyst, ML Engineer, Visualizer, Researcher, Synthesizer) "
-        "shares this exact dataset. Try: <em>“Which features best predict the target, and how accurate is a model?”</em></div>",
-        unsafe_allow_html=True,
+    ui.callout(
+        "The crew — <strong>Planner, Data Analyst, ML Engineer, Visualizer, Researcher, "
+        "Synthesizer</strong> — shares this exact dataset. Try: <em>“Which features best "
+        "predict the target, and how accurate is a model?”</em>",
+        icon="◆",
     )
 
-    query = st.text_area("Your question", key="agent_query", placeholder="e.g. Find anomalies and tell me what drives them.")
-    c1, c2 = st.columns([1, 1])
-    ask = c1.button("Ask the crew", type="primary", use_container_width=True)
-    max_steps = int(c2.number_input("Max tool steps", min_value=1, max_value=20, value=int(config.max_steps), step=1))
+    for message in st.session_state["agent_history"]:
+        ui.chat_message(message["role"], message["text"], message.get("agents", ()))
+
+    with st.container(border=True):
+        query = st.text_area(
+            "Your question",
+            key="agent_query",
+            placeholder="e.g. Find anomalies in revenue and tell me what drives them.",
+        )
+        c1, c2 = st.columns([2, 1])
+        ask = c1.button("Ask the crew", type="primary", width="stretch")
+        max_steps = int(
+            c2.number_input("Max tool steps", min_value=1, max_value=20, value=int(config.max_steps), step=1)
+        )
 
     if ask and query.strip():
-        with st.spinner("The crew is planning, analyzing, and (if needed) training a model..."):
+        with st.spinner("The crew is planning, analysing, and (if needed) training a model…"):
             try:
                 result = run_agent_query(
                     query.strip(),
@@ -694,84 +548,110 @@ def agents_view(dataset: pd.DataFrame) -> None:
                     session_id=st.session_state["agent_session"],
                     max_steps=max_steps,
                 )
-                st.session_state["agent_result"] = result
             except (ValueError, TypeError) as exc:
-                st.error(f"Invalid request: {exc}")
+                ui.callout(f"<strong>Invalid request.</strong> {ui.esc(exc)}", tone="danger", icon="✕")
+                return
             except LLMError as exc:
-                st.error(f"LLM backbone error: {exc}")
+                ui.callout(f"<strong>LLM backbone error.</strong> {ui.esc(exc)}", tone="danger", icon="✕")
+                return
             except Exception as exc:  # pragma: no cover - surface anything else
-                st.error(f"Agent run failed: {exc}")
+                ui.callout(f"<strong>Agent run failed.</strong> {ui.esc(exc)}", tone="danger", icon="✕")
+                return
+
+        st.session_state["agent_result"] = result
+        st.session_state["agent_history"].extend(
+            [
+                {"role": "user", "text": result.query},
+                {"role": "assistant", "text": result.answer or "_No answer produced._",
+                 "agents": list(result.agents_used)},
+            ]
+        )
+        st.rerun()
 
     result = st.session_state.get("agent_result")
     if not result:
         return
 
-    if result.agents_used:
-        chips = " ".join(f"<span class='if-status'>{name}</span>" for name in result.agents_used)
-        st.markdown(f"<div class='if-band'><strong>Agents used:</strong> {chips}</div>", unsafe_allow_html=True)
-
-    st.subheader("Answer")
-    st.markdown(result.answer or "_No answer produced._")
-
     if result.model_endpoint:
-        st.markdown("<div class='if-band'><strong>Model trained.</strong> Prediction endpoint below.</div>", unsafe_allow_html=True)
-        st.code(result.model_endpoint)
+        ui.callout(
+            "<strong>A model was trained during this run.</strong> Prediction endpoint:",
+            tone="success",
+            icon="✓",
+            code=str(result.model_endpoint),
+        )
 
     if result.insights:
-        st.subheader("Insights")
-        for insight in result.insights[:6]:
-            severity_class = f"if-{insight.severity}"
-            st.markdown(
-                f"<div class='if-band'><span class='{severity_class}'>{insight.severity.upper()}</span> "
-                f"<strong>{insight.title}</strong><br>{insight.insight}<br>"
-                f"<span class='if-status'>{insight.confidence_label} confidence</span> {insight.action}</div>",
-                unsafe_allow_html=True,
-            )
+        ui.section_header("Findings", "Insights the crew gathered", "Same severity system as Engine 2.")
+        ui.insight_grid(result.insights[:6])
 
     if result.charts:
-        st.subheader("Charts")
-        for chart in result.charts[:6]:
-            try:
-                st.plotly_chart(to_plotly(chart), use_container_width=True)
-            except Exception as exc:
-                st.warning(f"Could not render {chart.title}: {exc}")
+        ui.section_header("Evidence", "Charts the crew produced", "")
+        render_charts(list(result.charts)[:6], active_theme)
+
+    with st.expander("Agent trace — what each step did", expanded=False):
+        ui.trace_timeline(result.trace)
+        if result.tools_used:
+            ui.render(
+                '<div style="margin-top:.6rem">',
+                ui.chips(result.tools_used, tone="accent"),
+                "</div>",
+            )
 
     if result.errors:
-        with st.expander("Run notes / recovered errors"):
-            st.json(result.errors)
+        with st.expander(f"Run notes / recovered errors ({len(result.errors)})"):
+            ui.kv_panel("Steps that reported a problem", result.errors)
 
-    with st.expander("Agent trace (what each step did)"):
-        st.json(result.trace)
+
+# ----------------------------------------------------------------------- api
+API_ROUTES = (
+    ("Platform", (("GET", "/health", "Service health"),)),
+    (
+        "Engine 1 — AutoML",
+        (
+            ("POST", "/automl/train", "Train from JSON rows"),
+            ("POST", "/automl/upload-train", "Train from CSV/Excel"),
+            ("POST", "/automl/predict", "Predict with the registered pipeline"),
+            ("GET", "/automl/model-info", "Registered model metadata"),
+        ),
+    ),
+    (
+        "Engine 2 — Analytics",
+        (
+            ("POST", "/analytics/analyze", "Run EDA from JSON rows"),
+            ("POST", "/analytics/upload-analyze", "Run EDA from an uploaded dataset"),
+            ("POST", "/analytics/profile", "Quick data profile"),
+            ("GET", "/analytics/capabilities", "List analytics capabilities"),
+        ),
+    ),
+    (
+        "Engine 3 — Agents",
+        (
+            ("POST", "/agents/query", "Ask the crew from JSON rows"),
+            ("POST", "/agents/upload-query", "Ask the crew from an uploaded dataset"),
+            ("GET", "/agents/history", "Past queries for a session"),
+            ("GET", "/agents/capabilities", "List agents, tools, and LLM config"),
+        ),
+    ),
+)
 
 
 def api_view() -> None:
-    section_title("Integration", "API Gateway", "Use the FastAPI routes when the UI needs to connect with another system.")
-    st.markdown("Run the API server from the project root:")
-    st.code("uvicorn api.main:app --reload", language="bash")
-    st.markdown("Then open:")
-    st.code("http://127.0.0.1:8000/docs")
-    st.markdown("Available routes:")
-    routes = pd.DataFrame(
-        [
-            ["GET", "/health", "Service health"],
-            ["POST", "/automl/train", "Train AutoML from JSON rows"],
-            ["POST", "/automl/upload-train", "Train AutoML from CSV/Excel"],
-            ["POST", "/automl/predict", "Predict with registered AutoML pipeline"],
-            ["GET", "/automl/model-info", "Registered model metadata"],
-            ["POST", "/analytics/analyze", "Run EDA from JSON rows"],
-            ["POST", "/analytics/upload-analyze", "Run EDA from uploaded dataset"],
-            ["POST", "/analytics/profile", "Quick data profile"],
-            ["GET", "/analytics/capabilities", "List analytics capabilities"],
-            ["POST", "/agents/query", "Ask the agent crew from JSON rows"],
-            ["POST", "/agents/upload-query", "Ask the agent crew from an uploaded dataset"],
-            ["GET", "/agents/history", "Past agent queries for a session"],
-            ["GET", "/agents/capabilities", "List agents, tools, and LLM config"],
-        ],
-        columns=["Method", "Route", "Purpose"],
+    ui.section_header(
+        "Integration",
+        "API gateway",
+        "Every engine is reachable over HTTP when another system needs the same results.",
     )
-    st.dataframe(routes, use_container_width=True, hide_index=True)
+    left, right = st.columns(2)
+    with left:
+        ui.callout("<strong>Start the server</strong> from the project root", icon="1", code="uvicorn api.main:app --reload")
+    with right:
+        ui.callout("<strong>Then open the interactive docs</strong>", icon="2", code="http://127.0.0.1:8000/docs")
+
+    for group, routes in API_ROUTES:
+        ui.route_list(group, routes)
 
 
+# ------------------------------------------------------------------- loaders
 def read_uploaded(uploaded: Any) -> pd.DataFrame:
     name = uploaded.name.lower()
     raw = uploaded.getvalue()
