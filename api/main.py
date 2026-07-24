@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from .routers import analytics, automl
+from .routers import agents, analytics, automl
 
 
 app = FastAPI(
@@ -15,6 +15,7 @@ app = FastAPI(
 
 app.include_router(automl.router)
 app.include_router(analytics.router)
+app.include_router(agents.router)
 
 
 @app.get("/health")

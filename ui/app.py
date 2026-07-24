@@ -1,16 +1,23 @@
-"""Streamlit dashboard for IntelliFlow Engines 1 and 2."""
+"""Streamlit dashboard for IntelliFlow Engines 1, 2, and 3."""
 
 from __future__ import annotations
 
 import io
+import sys
 from pathlib import Path
 from typing import Any
+
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 from sklearn.datasets import load_iris
 
+from engines.agents import get_agent_config, run_agent_query
+from engines.agents.llm import LLMError
 from engines.analytics import run_eda
 from engines.analytics.visualization import to_plotly
 from engines.automl.pipeline import detect_task_type, run_automl
@@ -369,8 +376,8 @@ def main() -> None:
     overview(dataset)
     engine_strip()
 
-    dataset_tab, analytics_tab, automl_tab, predict_tab, api_tab = st.tabs(
-        ["01 Dataset", "02 Analytics", "03 AutoML", "04 Prediction", "05 API"]
+    dataset_tab, analytics_tab, automl_tab, predict_tab, agents_tab, api_tab = st.tabs(
+        ["01 Dataset", "02 Analytics", "03 AutoML", "04 Prediction", "05 Agents", "06 API"]
     )
     with dataset_tab:
         dataset_view(dataset)
@@ -380,6 +387,8 @@ def main() -> None:
         automl_view(dataset)
     with predict_tab:
         prediction_view(dataset)
+    with agents_tab:
+        agents_view(dataset)
     with api_tab:
         api_view()
 
@@ -645,6 +654,96 @@ def prediction_view(dataset: pd.DataFrame) -> None:
             st.error(f"Prediction failed: {exc}")
 
 
+def agents_view(dataset: pd.DataFrame) -> None:
+    section_title(
+        "Engine 3",
+        "Agent Orchestration",
+        "Ask a question in plain English. A crew of agents analyzes the dataset and can trigger AutoML and Analytics for you.",
+    )
+
+    config = get_agent_config()
+    if not config.has_credentials:
+        st.markdown(
+            "<div class='if-band'>No LLM key detected. Add <strong>OLLAMA_API_KEY</strong> to a <code>.env</code> "
+            "file in the project root (model <strong>" + config.model + "</strong> via <strong>" + config.host + "</strong>), then rerun.</div>",
+            unsafe_allow_html=True,
+        )
+
+    if "agent_session" not in st.session_state:
+        import uuid
+
+        st.session_state["agent_session"] = uuid.uuid4().hex[:12]
+
+    st.markdown(
+        "<div class='if-band'>The crew (Planner, Data Analyst, ML Engineer, Visualizer, Researcher, Synthesizer) "
+        "shares this exact dataset. Try: <em>“Which features best predict the target, and how accurate is a model?”</em></div>",
+        unsafe_allow_html=True,
+    )
+
+    query = st.text_area("Your question", key="agent_query", placeholder="e.g. Find anomalies and tell me what drives them.")
+    c1, c2 = st.columns([1, 1])
+    ask = c1.button("Ask the crew", type="primary", use_container_width=True)
+    max_steps = int(c2.number_input("Max tool steps", min_value=1, max_value=20, value=int(config.max_steps), step=1))
+
+    if ask and query.strip():
+        with st.spinner("The crew is planning, analyzing, and (if needed) training a model..."):
+            try:
+                result = run_agent_query(
+                    query.strip(),
+                    dataset,
+                    session_id=st.session_state["agent_session"],
+                    max_steps=max_steps,
+                )
+                st.session_state["agent_result"] = result
+            except (ValueError, TypeError) as exc:
+                st.error(f"Invalid request: {exc}")
+            except LLMError as exc:
+                st.error(f"LLM backbone error: {exc}")
+            except Exception as exc:  # pragma: no cover - surface anything else
+                st.error(f"Agent run failed: {exc}")
+
+    result = st.session_state.get("agent_result")
+    if not result:
+        return
+
+    if result.agents_used:
+        chips = " ".join(f"<span class='if-status'>{name}</span>" for name in result.agents_used)
+        st.markdown(f"<div class='if-band'><strong>Agents used:</strong> {chips}</div>", unsafe_allow_html=True)
+
+    st.subheader("Answer")
+    st.markdown(result.answer or "_No answer produced._")
+
+    if result.model_endpoint:
+        st.markdown("<div class='if-band'><strong>Model trained.</strong> Prediction endpoint below.</div>", unsafe_allow_html=True)
+        st.code(result.model_endpoint)
+
+    if result.insights:
+        st.subheader("Insights")
+        for insight in result.insights[:6]:
+            severity_class = f"if-{insight.severity}"
+            st.markdown(
+                f"<div class='if-band'><span class='{severity_class}'>{insight.severity.upper()}</span> "
+                f"<strong>{insight.title}</strong><br>{insight.insight}<br>"
+                f"<span class='if-status'>{insight.confidence_label} confidence</span> {insight.action}</div>",
+                unsafe_allow_html=True,
+            )
+
+    if result.charts:
+        st.subheader("Charts")
+        for chart in result.charts[:6]:
+            try:
+                st.plotly_chart(to_plotly(chart), use_container_width=True)
+            except Exception as exc:
+                st.warning(f"Could not render {chart.title}: {exc}")
+
+    if result.errors:
+        with st.expander("Run notes / recovered errors"):
+            st.json(result.errors)
+
+    with st.expander("Agent trace (what each step did)"):
+        st.json(result.trace)
+
+
 def api_view() -> None:
     section_title("Integration", "API Gateway", "Use the FastAPI routes when the UI needs to connect with another system.")
     st.markdown("Run the API server from the project root:")
@@ -663,6 +762,10 @@ def api_view() -> None:
             ["POST", "/analytics/upload-analyze", "Run EDA from uploaded dataset"],
             ["POST", "/analytics/profile", "Quick data profile"],
             ["GET", "/analytics/capabilities", "List analytics capabilities"],
+            ["POST", "/agents/query", "Ask the agent crew from JSON rows"],
+            ["POST", "/agents/upload-query", "Ask the agent crew from an uploaded dataset"],
+            ["GET", "/agents/history", "Past agent queries for a session"],
+            ["GET", "/agents/capabilities", "List agents, tools, and LLM config"],
         ],
         columns=["Method", "Route", "Purpose"],
     )

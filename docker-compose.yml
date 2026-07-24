@@ -4,7 +4,10 @@ services:
     build: .
     ports: ['8000:8000']
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Engine 3 (Agents) LLM backbone — Ollama Cloud gpt-oss:120b by default.
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
+      - OLLAMA_HOST=${OLLAMA_HOST:-https://ollama.com}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gpt-oss:120b}
       - MLFLOW_TRACKING_URI=http://mlflow:5000
       - REDIS_URL=redis://redis:6379
     depends_on: [mlflow, redis, chromadb]

@@ -1,3 +1,16 @@
 # Base configuration for IntelliFlow
 project_name: "IntelliFlow"
 version: "1.0.0"
+
+# Engine 3 (Agent Orchestration) — non-secret settings.
+# Secrets (OLLAMA_API_KEY) live in .env / the environment, never here.
+# The LLM backbone is provider-swappable: point host/model at Ollama Cloud
+# (default), a local Ollama daemon, Groq, or any OpenAI-compatible endpoint.
+agents:
+  host: "https://ollama.com"
+  model: "gpt-oss:120b"
+  embed_model: "nomic-embed-text"
+  temperature: 0.2
+  max_steps: 8
+  max_memory_results: 5
+  request_timeout: 120
