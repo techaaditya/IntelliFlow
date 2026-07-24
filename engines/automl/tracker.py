@@ -92,7 +92,7 @@ class MLflowTracker:
                     mlflow.log_metric(key, float(value))
 
             if model is not None:
-                mlflow.sklearn.log_model(model, artifact_path="model")
+                mlflow.sklearn.log_model(model, artifact_path="model", serialization_format="cloudpickle")
                 artifact_paths.append("model")
 
             with TemporaryDirectory() as tmp_dir:
@@ -141,6 +141,7 @@ class MLflowTracker:
                 model,
                 artifact_path="model",
                 registered_model_name=registered_model_name,
+                serialization_format="cloudpickle",
             )
             return MLflowRunRecord(run_id=run.info.run_id, artifact_paths=["model"])
 

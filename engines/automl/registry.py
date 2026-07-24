@@ -91,6 +91,9 @@ class AutoMLRegistry:
                 sk_model=full_pipeline,
                 artifact_path=artifact_path,
                 registered_model_name=self.model_name,
+                # cloudpickle handles XGBoost/LightGBM types; mlflow 3.x's default
+                # skops format rejects them as "untrusted".
+                serialization_format="cloudpickle",
             )
 
             record = RegistryRecord(
